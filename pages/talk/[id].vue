@@ -6,6 +6,8 @@ import SendIcon from '../../components/SendIcon.vue'
 import AnimatedBars from '~~/components/AnimatedBars.vue'
 
 import contacts from '../../assets/contacts.json'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useRuntimeConfig, useRoute, navigateTo } from '#app'
 
 const MAX_COUNT = 3500
 const MIN_DECIBELS = -45
@@ -45,13 +47,10 @@ function handleClose() {
 }
 
 function handleError() {
-
     errorMessage.value = "Error calling getUserMedia"
-
 }
 
 function handleStream(stream) {
-
     isReady.value = true
 
     mediaRec.value = new MediaRecorder(stream)
@@ -59,11 +58,9 @@ function handleStream(stream) {
     mediaRec.value.addEventListener("stop", handleStop)
 
     checkAudioLevel(stream)
-
 }
 
 function checkAudioLevel(stream) {
-
     const audioContext = new AudioContext()
     const audioStreamSource = audioContext.createMediaStreamSource(stream)
     const analyser = audioContext.createAnalyser()
@@ -75,7 +72,6 @@ function checkAudioLevel(stream) {
     const domainData = new Uint8Array(bufferLength)
 
     const detectSound = () => {
-
         let soundDetected = false
 
         analyser.getByteFrequencyData(domainData)
@@ -87,86 +83,62 @@ function checkAudioLevel(stream) {
         }
         
         if(soundDetected === true) {
-
             if(isRecording.value === false && startLoader.value === false) {
                 startCountdown.value = false
                 isRecording.value = true
-
                 mediaRec.value.start()
-
             } else {
                 if(startCountdown.value === true) {
                     startCountdown.value = false
                     count.value = 0
                 }
             }
-
         } else {
-
             if(isRecording.value === true) {
                 if(startCountdown.value === true) {
-
                     if(count.value >= MAX_COUNT) {
-                        
                         startCountdown.value = false
                         count.value = 0
                         isRecording.value = false
-
                         mediaRec.value.stop()
                     }
-
                 } else {
                     startCountdown.value = true
                 }
             }
-
         }
 
         animFrame.value = window.requestAnimationFrame(detectSound)
-
     }
 
     animFrame.value = window.requestAnimationFrame(detectSound)
-
 }
 
 function handleData(e) {
-
     chunks.value.push(e.data)
-
 }
 
 async function handleStop() {
-
     const blob = new Blob(chunks.value, {type: 'audio/webm;codecs=opus'})
     chunks.value = []
-
-    audioFile.value = new File([blob], `file${Date.now()}.webm`);
-
+    audioFile.value = new File([blob], `file${Date.now()}.webm`)
 }
 
 async function uploadFile(file) {
-
     let flagContinue = true
     let func = null
     let count = 0
 
     do {
-
         try {
-            
             let formData = new FormData()
             formData.append("name", selectedPerson.value.name)
             formData.append("count", count)
             
             if(func) {
-                
                 formData.append("tools", func)
-
             } else {
-
                 formData.append("file", file)
-
             }
 
             const url = func ? '/api/function_call' : '/api/transcribe'
@@ -181,47 +153,30 @@ async function uploadFile(file) {
             })
 
             if(response.status === 'ok' && response.file) {
-
                 audioDomRef.value.src = response.file
-
             }
 
             if(response.output.tool_calls) {
-
                 func = response.output
-
             } else {
-
                 flagContinue = false
-
             }
-
         } catch(error) {
-
             console.log(error.name, error.message)
-
             flagContinue = false
-
         }
 
         count++
-
     } while(flagContinue)
-
 }
 
-async function handleSend() {
-
-    const message = messageInput.value
-
+async function handleSendOnce(message) {
     let flagContinue = true
     let func = null
     let count = 0
 
     do {
-
         try {
-            
             let payload = {
                 name: selectedPerson.value.name,
                 message: message,
@@ -229,13 +184,9 @@ async function handleSend() {
             }
             
             if(func) {
-                
                 payload.tools = func
-
             } else {
-                
                 messageInput.value = ''
-
             }
 
             const url = func ? '/api/function_call' : '/api/transcribe'
@@ -250,41 +201,79 @@ async function handleSend() {
             })
 
             if(response.status === 'ok' && response.file) {
-
                 audioDomRef.value.src = response.file
-
             }
 
             console.log("response", response)
 
             if(response.output.tool_calls) {
-
                 func = response.output
-
             } else {
-
                 flagContinue = false
-
             }
-
         } catch(error) {
-
             console.log(error.name, error.message)
-
             flagContinue = false
-
         }
 
         count++
-
     } while(flagContinue)
+}
 
+async function handleSend() {
+    const message = messageInput.value
+
+    let flagContinue = true
+    let func = null
+    let count = 0
+
+    do {
+        try {
+            let payload = {
+                name: selectedPerson.value.name,
+                message: message,
+                count: count,
+            }
+            
+            if(func) {
+                payload.tools = func
+            } else {
+                messageInput.value = ''
+            }
+
+            const url = func ? '/api/function_call' : '/api/transcribe'
+
+            const response = await $fetch(url, {
+                method: "POST",
+                headers: {
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify(payload),
+                signal: abortController.value.signal,
+            })
+
+            if(response.status === 'ok' && response.file) {
+                audioDomRef.value.src = response.file
+            }
+
+            console.log("response", response)
+
+            if(response.output.tool_calls) {
+                func = response.output
+            } else {
+                flagContinue = false
+            }
+        } catch(error) {
+            console.log(error.name, error.message)
+            flagContinue = false
+        }
+
+        count++
+    } while(flagContinue)
 }
 
 function getAudioDuration() {
-
     console.log("get audio duration")
-
     audioDomRef.value.currentTime = 0
     audioDomRef.value.removeEventListener('timeupdate', getDuration)
 
@@ -296,33 +285,22 @@ function getAudioDuration() {
 
     audioDomRef.value.play()
     startLoader.value = true
-
 }
 
 function handleAudioLoad() {
-    
     if(audioDomRef.value.duration === Infinity) {
-
         console.log("audio infinity 1")
-
         audioDomRef.value.currentTime = 1e101
         audioDomRef.value.addEventListener('timeupdate', getAudioDuration)
-
     } else {
-
         console.log("audio started 1")
-
         audioDomRef.value.play()
         startLoader.value = true
-
     }
-
 }
 
 function handleAudioEnded() {
-
     console.log("audio ended")
-
     startLoader.value = false
 }
 
@@ -332,40 +310,27 @@ function handleAudioError() {
 }
 
 watch(audioFile, (value) => {
-
     uploadFile(value)
-
 })
 
 watch(startCountdown, (value) => {
-    
     clearInterval(timer.value)
 
     if(value === true) {
-        
         count.value = 0
 
         timer.value = setInterval(() => {
-            
             count.value += 100
-
         }, 100)
-
     }
-
 })
 
-onMounted(() => {
-
+onMounted(async () => {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-
         const options = { audio: true }
         navigator.mediaDevices.getUserMedia(options).then(handleStream).catch(handleError)
-
     } else {
-
         errorMessage.value = "Media devices not supported"
-        
     }
 
     abortController.value = new AbortController()
@@ -373,11 +338,8 @@ onMounted(() => {
     selectedPerson.value = contacts.items.find(item => item.name.toLowerCase() === route.params.id.toLowerCase())
 
     if(!selectedPerson.value) {
-        
         navigateTo("/")
-
     } else {
-
         languageStr.value = selectedPerson.value["lang-caption"]
 
         inputRef.value.focus()
@@ -388,18 +350,17 @@ onMounted(() => {
         audioDomRef.value.addEventListener('ended', handleAudioEnded)
         audioDomRef.value.addEventListener('error', handleAudioError)
 
+        const universityInfo = {
+            message: 'Я дам тебе информацию на руском но ты должен мне отвечать на языке на котором ты изначально должен был говорить, запомни всю информацию о моем университете КазНИТУ имени Сатпаева: .1. Чтобы пройти фейс контроль у входа надо сходить в ГМК и дать отсканировать свое лицо .2. Глоссарий: АК – Академический календарь. Апелляция – процедура, проводимая для выявления и устранения факторов, способствовавших необъективной оценке знаний обучающихся. ГУК – Главный учебный корпус. ГМК – Горно-металлургический корпус. ДО – Дистанционное обучение. ДОТ – Дистацнионно-образовательные технологии. ДСВ – Департамент по студенческим вопросам. ИБО – Институт Базового Образования. ИВД – Институт Военного Дела. ИУП (индивидуальный учебный план) – документ, отражающий образовательную траекторию конкретного студента, составляемый студентом самостоятельно на академический период на основании Рабочего учебного плана (РУП); содержит перечень учебных дисциплин, на которые он/а записался, и количество кредитов. МУК – Малый учебный корпус. НК – Нефтяной корпус. Неделя Add/Drop – период, как правило, на первой неделе обучения, когда студент может «сняться» с дисциплины и/или записаться по своему желанию на новую. Офис регистратора (ОР) – служба, занимающаяся регистрацией обучающихся на преподаваемые дисциплины, регистрацией всех их учебных достижений на протяжении всего периода обучения, обеспечивающая организацию рубежного и итогового контроля знаний и расчет академического рейтинга.',
+        };
+        await handleSendOnce(universityInfo.message);
     }
-
 })
 
 onBeforeUnmount(() => {
-
     abortController.value.abort()
-
     window.cancelAnimationFrame(animFrame.value)
-
 })
-
 </script>
 
 <template>

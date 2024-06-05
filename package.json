@@ -13,8 +13,6 @@
   "devDependencies": {
     "nuxt": "^3.0.0"
   },
-  "author": "supershaneski",
-  "license": "MIT",
   "dependencies": {
     "formidable": "^2.1.1",
     "mongoose": "^8.0.0",

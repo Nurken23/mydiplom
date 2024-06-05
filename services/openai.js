@@ -2,9 +2,9 @@ import OpenAI from 'openai'
 import fs from 'fs'
 
 const openai = new OpenAI({
-    apiKey: useRuntimeConfig().openaiApiKey,
-    maxRetries: 3,
-    timeout: 60 * 1000 // 60s
+    apiKey: useRuntimeConfig().openaiApiKey, // Использование API ключа из конфигурации
+    maxRetries: 3, // Максимальное количество повторных попыток
+    timeout: 60 * 1000 // Таймаут запроса (60 секунд)
 })
 
 export async function embedding({
@@ -25,9 +25,9 @@ export async function embedding({
 
     } catch(error) {
 
-        console.log(error.name, error.message)
+        console.log(error.name, error.message) // Вывод ошибки в консоль
 
-        throw error
+        throw error // Выброс исключения
 
     }
 }
@@ -62,17 +62,17 @@ export async function chat({
 
     try {
 
-        const result = await openai.chat.completions.create(options)
+        const result = await openai.chat.completions.create(options) // Запрос завершения чата
 
-        console.log('chat', result)
+        console.log('chat', result) // Вывод результата чата в консоль
 
-        return result.choices[0]
+        return result.choices[0] // Возвращение первого варианта завершения
 
     } catch(error) {
         
-        console.log(error.name, error.message)
+        console.log(error.name, error.message) // Вывод ошибки в консоль
 
-        throw error
+        throw error // Выброс исключения
 
     }
 
@@ -102,9 +102,9 @@ export async function whisper({
 
     } catch(error) {
         
-        console.log(error.name, error.message)
+        console.log(error.name, error.message) // Вывод ошибки в консоль
 
-        throw error
+        throw error // Выброс исключения
         
     }
 }
@@ -129,9 +129,9 @@ export async function speech({
 
     } catch(error) {
 
-        console.log(error.name, error.message)
+        console.log(error.name, error.message) // Вывод ошибки в консоль
 
-        throw error
+        throw error // Выброс исключения
 
     }
 

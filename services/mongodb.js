@@ -4,27 +4,24 @@ export default class MongoDB {
 
     constructor() {
 
-        this.MemoryVectors = undefined
-
-        this.Messages = undefined
-
-        this.CalendarEntry = undefined
-
-        this.error = false
+        this.MemoryVectors = undefined // Переменная для модели векторов памяти
+        this.Messages = undefined // Переменная для модели сообщений
+        this.CalendarEntry = undefined // Переменная для модели календарных записей
+        this.error = false // Флаг ошибки инициализации, инициализируется как false
 
     }
 
     async initialize() {
 
-        const db_hostname = useRuntimeConfig().mongodbHostName
-        const db_port = useRuntimeConfig().mongodbPort
-        const db_name = useRuntimeConfig().mongodbDbName
+        const db_hostname = useRuntimeConfig().mongodbHostName // Получение хоста MongoDB из конфигурации
+        const db_port = useRuntimeConfig().mongodbPort // Получение порта MongoDB из конфигурации
+        const db_name = useRuntimeConfig().mongodbDbName // Получение имени базы данных MongoDB из конфигурации
         
         try {
 
-            await mongoose.connect(`mongodb://${db_hostname}:${db_port}/${db_name}`)
+            await mongoose.connect(`mongodb://${db_hostname}:${db_port}/${db_name}`) // Подключение к MongoDB с использованием данных конфигурации
     
-            const messagesSchema = new mongoose.Schema({
+            const messagesSchema = new mongoose.Schema({ // Схема для сообщений
                 uid: String,
                 role: String,
                 content: String,
@@ -34,45 +31,49 @@ export default class MongoDB {
                 }
             })
 
-            const memoryVectorsSchema = new mongoose.Schema({
+            const memoryVectorsSchema = new mongoose.Schema({ // Схема для векторов памяти
                 chunks: [{ embedding: [Number], text: String }]
             })
 
-            memoryVectorsSchema.methods.getScore = function getScore(query_embedding) {
+            memoryVectorsSchema.methods.getScore = function getScore(query_embedding) { // Метод для вычисления сходства по косинусной мере
                 return this.chunks.map((chunk) => {
-                    const dot_product = chunk.embedding.reduce((sum, val, i) => sum + val * query_embedding[i], 0)
-                    const magnitude = (vec) => Math.sqrt(vec.reduce((sum, val) => sum + val * val, 0))
-                    const cosine_similarity = dot_product / (magnitude(chunk.embedding) * magnitude(query_embedding))
-                    return { text: chunk.text, score: cosine_similarity }
+                    const dot_product = chunk.embedding.reduce((sum, val, i) => sum + val * query_embedding[i], 0) // Скалярное произведение
+                    const magnitude = (vec) => Math.sqrt(vec.reduce((sum, val) => sum + val * val, 0)) // Норма вектора
+                    const cosine_similarity = dot_product / (magnitude(chunk.embedding) * magnitude(query_embedding)) // Косинусная мера
+                    return { text: chunk.text, score: cosine_similarity } // Возвращаем текст и значение косинусной меры
                 })
             }
 
-            const calendarEntrySchema = new mongoose.Schema({
-                event: { type: String, index: true }, // String,
-                date: String,
-                time: String,
-                additional_detail: String,
+            const calendarEntrySchema = new mongoose.Schema({ // Схема для календарных записей
+                event: { type: String, index: true }, // Событие
+                date: String, // Дата
+                time: String, // Время
+                additional_detail: String, // Дополнительная информация
             })
             
-            const MemoryVectors = mongoose.models.MemoryVectors || mongoose.model('MemoryVectors', memoryVectorsSchema)
-            const Messages = mongoose.models.Messages || mongoose.model('Messages', messagesSchema)
-            const CalendarEntry = mongoose.models.CalendarEntry || mongoose.model('CalendarEntry', calendarEntrySchema)
+            const MemoryVectors = mongoose.models.MemoryVectors || mongoose.model('MemoryVectors', memoryVectorsSchema) // Модель векторов памяти
+            const Messages = mongoose.models.Messages || mongoose.model('Messages', messagesSchema) // Модель сообщений
+            const CalendarEntry = mongoose.models.CalendarEntry || mongoose.model('CalendarEntry', calendarEntrySchema) // Модель календарных записей
 
-            this.MemoryVectors = MemoryVectors
-            this.Messages = Messages
-            this.CalendarEntry = CalendarEntry
+            this.MemoryVectors = MemoryVectors // Установка переменной модели векторов памяти
+            this.Messages = Messages // Установка переменной модели сообщений
+            this.CalendarEntry = CalendarEntry // Установка переменной модели календарных записей
 
         } catch(error) {
 
-            console.log(error.name, error.message)
+            console.log(error.name, error.message) // Вывод ошибки инициализации в консоль
 
-            this.error = true
+            this.error = true // Установка флага ошибки инициализации в true
 
-            throw error
+            throw error // Выброс исключения
 
         }
 
     }
+
+    // Остальные методы для работы с MongoDB
+
+
 
     async addCalendarEntry(calEntry) {
 
